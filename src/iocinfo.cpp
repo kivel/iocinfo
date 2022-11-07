@@ -12,6 +12,9 @@
 
 #include "iocinfoData.h"
 
+#include <epicsThread.h>
+#include "cantProceed.h"
+
 /**
  * @brief callback for response handling
  */
@@ -26,14 +29,12 @@ static size_t response_callback(void *data, size_t size, size_t nmemb, void *use
  * @param[in] payload json payload
  * @param[in] url URL to post to
  */
-static void postJson(const nlohmann::json payload, const std::string url)
+static void postJson(const nlohmann::json payload, const char *url)
 {
+  std::cout << "=======> posting data to URL: " << url << std::endl;
   CURL *curl = nullptr;
   CURLcode res = CURLE_OK;
 
-  // 
-  // std::string data = static_cast<std::string>(payload.dump().c_str());
-  // std::string data = static_cast<std::string>(payload.dump());
   std::string data = payload.dump();
 
   curl_global_init(CURL_GLOBAL_ALL);
@@ -44,7 +45,7 @@ static void postJson(const nlohmann::json payload, const std::string url)
     /* First set the URL that is about to receive our POST. This URL can
        just as well be an https:// URL if that is what should receive the
        data. */
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, url);
     struct curl_slist *headers = nullptr;
     headers = curl_slist_append(headers, "Accept: application/json");
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -56,8 +57,9 @@ static void postJson(const nlohmann::json payload, const std::string url)
     // TODO: add error handling
     if (res != CURLE_OK)
     {
-      fprintf(stderr, "curl_easy_perform() failed: %s\n",
-              curl_easy_strerror(res));
+      // fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+      std::cerr << "EE: curl_easy_perform() failed:" << curl_easy_strerror(res) << std::endl;
+      std::cerr << "EE: url" << url << std::endl;
     }
 
     /* always cleanup */
@@ -80,9 +82,18 @@ static void writeJson(const nlohmann::json payload, const std::string fname)
 /**
  * @brief global variables
  */
-std::unique_ptr<std::thread> postThread; // Thread periodically posting data to elasticsearch
-std::atomic<bool> stopPost;              // Setting this flag will stop the posting of data to elasticsearch
-IocInfoData::Data *data;
+// std::unique_ptr<std::thread> postThread; // Thread periodically posting data to elasticsearch
+// epicsThreadId epicsPostThread;
+std::atomic<bool> stopPost; // Setting this flag will stop the posting of data to elasticsearch
+// IocInfoData::Data *data;
+
+typedef struct iocinfoPrivData
+{
+  const char *url;               // url to post data to elasticsearch
+  IocInfoData::Data *data;       // json data
+  epicsThreadId epicsPostThread; // thread
+
+} iocinfoPrivData;
 
 /**
  * @brief worker thread function
@@ -90,10 +101,14 @@ IocInfoData::Data *data;
  * @param[in] url url to post to
  * @todo add variable for sleep_for
  */
-void worker(IocInfoData::Data *data, std::string url)
+// void worker(IocInfoData::Data *data, std::string url)
+void worker(void *input)
 {
+  struct iocinfoPrivData *priv = (iocinfoPrivData *)(input);
+
   std::cout << "== worker started" << std::endl;
-  postJson(*data->payload, url);
+  postJson(*priv->data->payload, priv->url);
+  std::cerr << "url addr is " << &priv->url << std::endl;
   auto start = std::chrono::steady_clock::now();
 
   while (!stopPost)
@@ -103,10 +118,12 @@ void worker(IocInfoData::Data *data, std::string url)
     // only post data every n seconds
     if ((now - start) > std::chrono::seconds(10))
     {
-      postJson(*data->payload, url);
+      postJson(*priv->data->payload, priv->url);
+      std::cerr << "url addr is " << &priv->url << std::endl;
       start = now;
     }
   }
+  // delete(priv);
 }
 
 /**
@@ -115,17 +132,19 @@ void worker(IocInfoData::Data *data, std::string url)
  */
 void iocinfoStart(const char *url)
 {
+  struct iocinfoPrivData *priv;
+  priv = new iocinfoPrivData;
+
+  // priv->url = "svd-ciddock01:1516/iocinfo/";
+  priv->url = url;
+  priv->data = new IocInfoData::Data;
+
   stopPost = false;
-  // WTF! This doesn't work ???
-  // std::shared_ptr<IocInfoData::Data> data = std::make_shared<IocInfoData::Data>();
-  data = new IocInfoData::Data;
 
-  writeJson(*data->payload, "/tmp/iocinfo.json");
-
-  // need to use `new` here, as `std::make_unique` is only available in C++17
-  postThread.reset(new std::thread(worker, data, (std::string)url));
-
-  // TODO: should be cleaned up, shouldn't it?
+  priv->epicsPostThread = epicsThreadMustCreate("jsonPostWorker",
+                                                epicsThreadPriorityLow,
+                                                epicsThreadGetStackSize(epicsThreadStackSmall),
+                                                &worker, priv);
 }
 
 /**
@@ -133,20 +152,20 @@ void iocinfoStart(const char *url)
  */
 void iocinfoStop()
 {
-  stopPost = true;
-  if (postThread.get())
-  {
-    try
-    {
-      postThread->join();
-    }
-    catch (const std::system_error &e)
-    {
-      std::cout << "failed to join thread" << std::endl;
-      std::cout << e.what() << std::endl;
-      // Do nothing since we are destroying everything anyway.
-    }
-  }
+  // stopPost = true;
+  // if (postThread.get())
+  // {
+  //   try
+  //   {
+  //     postThread->join();
+  //   }
+  //   catch (const std::system_error &e)
+  //   {
+  //     std::cout << "failed to join thread" << std::endl;
+  //     std::cout << e.what() << std::endl;
+  //     // Do nothing since we are destroying everything anyway.
+  //   }
+  // }
   // delete (data);
 }
 
@@ -159,7 +178,7 @@ void iocinfo(const char *url)
   data = new IocInfoData::Data;
 
   // writeJson(*data->payload, "/tmp/iocinfo.json");
-  postJson(*data->payload, (std::string)url);
+  postJson(*data->payload, url);
 
   delete (data);
 }
