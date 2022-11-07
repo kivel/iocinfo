@@ -90,10 +90,19 @@ IocInfoData::Data *data;
 void worker(IocInfoData::Data *data, std::string url)
 {
   std::cout << "== worker started" << std::endl;
+  postJson(*data->payload, url);
+  auto start = std::chrono::steady_clock::now();
+
   while (!stopPost)
   {
-    postJson(*data->payload, url);
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    auto now = std::chrono::steady_clock::now();
+    // only post data every n seconds
+    if ((now - start) > std::chrono::seconds(10))
+    {
+      postJson(*data->payload, url);
+      start = now;
+    }
   }
 }
 
@@ -101,7 +110,7 @@ void worker(IocInfoData::Data *data, std::string url)
  * @brief start post thread function
  * @todo remove url and obtain from global scope, which is set through dedicated function
  */
-void startPostThread(const char *url)
+void iocinfoStart(const char *url)
 {
   stopPost = false;
   // WTF! This doesn't work ???
@@ -119,7 +128,7 @@ void startPostThread(const char *url)
 /**
  * @brief stop post thread function
  */
-void stopPostThread()
+void iocinfoStop()
 {
   stopPost = true;
   if (postThread.get())
@@ -130,10 +139,12 @@ void stopPostThread()
     }
     catch (const std::system_error &e)
     {
+      std::cout << "failed to join thread" << std::endl;
+      std::cout << e.what() << std::endl;
       // Do nothing since we are destroying everything anyway.
     }
   }
-  delete (data);
+  // delete (data);
 }
 
 /**
@@ -141,7 +152,7 @@ void stopPostThread()
  */
 void iocinfo(const char *url)
 {
-  startPostThread(url);
+  iocinfoStart(url);
   // IocInfoData::Data *data;
   // data = new IocInfoData::Data;
 
@@ -153,7 +164,7 @@ void iocinfo(const char *url)
 
 IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar,
                           IOCSH_FUNC_WRAP(iocinfo, "url(string)");
-                          IOCSH_FUNC_WRAP(startPostThread, "url(string)");
-                          IOCSH_FUNC_WRAP(stopPostThread);
+                          IOCSH_FUNC_WRAP(iocinfoStart, "url(string)");
+                          IOCSH_FUNC_WRAP(iocinfoStop);
                           /* more functions may be registered here */
 )

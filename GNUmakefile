@@ -14,7 +14,7 @@ BUILDCLASSES=Linux
 
 # useful for looping over maps and make_unique
 # USR_CXXFLAGS+=-std=c++17
-USR_CXXFLAGS+=-std=c++11
+USR_CXXFLAGS+=-std=c++11 -g
 USR_LDFLAGS+=-lcurl
 
 SOURCES += src/iocinfo.cpp
