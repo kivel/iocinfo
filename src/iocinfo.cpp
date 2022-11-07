@@ -23,15 +23,18 @@ static size_t response_callback(void *data, size_t size, size_t nmemb, void *use
 
 /**
  * @brief post payload to the server
- * @param[in] j json payload
+ * @param[in] payload json payload
  * @param[in] url URL to post to
  */
-static void postJson(const nlohmann::json j, const std::string url)
+static void postJson(const nlohmann::json payload, const std::string url)
 {
   CURL *curl = nullptr;
   CURLcode res = CURLE_OK;
 
-  std::string jsonData = j.dump().c_str();
+  // 
+  // std::string data = static_cast<std::string>(payload.dump().c_str());
+  // std::string data = static_cast<std::string>(payload.dump());
+  std::string data = payload.dump();
 
   curl_global_init(CURL_GLOBAL_ALL);
 
@@ -48,7 +51,7 @@ static void postJson(const nlohmann::json j, const std::string url)
     headers = curl_slist_append(headers, "charset: utf-8");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response_callback);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
     res = curl_easy_perform(curl);
     // TODO: add error handling
     if (res != CURLE_OK)
@@ -77,8 +80,8 @@ static void writeJson(const nlohmann::json payload, const std::string fname)
 /**
  * @brief global variables
  */
-std::unique_ptr<std::thread> postThread; //!< Thread periodically reading back setpoint values.
-std::atomic<bool> stopPost;              //!< Setting this flag will stop the parameter thread loop.
+std::unique_ptr<std::thread> postThread; // Thread periodically posting data to elasticsearch
+std::atomic<bool> stopPost;              // Setting this flag will stop the posting of data to elasticsearch
 IocInfoData::Data *data;
 
 /**
@@ -152,14 +155,13 @@ void iocinfoStop()
  */
 void iocinfo(const char *url)
 {
-  iocinfoStart(url);
-  // IocInfoData::Data *data;
-  // data = new IocInfoData::Data;
+  IocInfoData::Data *data;
+  data = new IocInfoData::Data;
 
   // writeJson(*data->payload, "/tmp/iocinfo.json");
-  // postJson(*data->payload, (std::string)url);
+  postJson(*data->payload, (std::string)url);
 
-  // delete (data);
+  delete (data);
 }
 
 IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar,
