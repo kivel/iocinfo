@@ -1,0 +1,17 @@
+# Get network addresses
+system "ip a s `ip r|awk '/^default /{print $5;exit}'`|awk  -F'[/ ]+' -vP=epicsEnvSet -vI=IP_ADDR -vB=BC_ADDR -vM=MAC_ADDR '/ether/{print P,M,$4} /inet /{print P,I,$3;print P,B,$6;exit}' >/tmp/${IOC}.iocinfo"
+# Assign `pwd` to ${STARTUP}
+system "echo -n 'epicsEnvSet STARTUP ' >>/tmp/${IOC}.iocinfo"
+pwd >> /tmp/${IOC}.iocinfo
+# Get system platform:
+# Generic Linux PC
+system "/bin/echo -e 'epicsEnvSet PLATFORM \x22'`cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null||echo Linux` Kernel `uname -r`'\x22' >>/tmp/${IOC}.iocinfo"
+# Platforms with device tree
+system "test ! -r /proc/device-tree/compatible||/bin/echo -e 'epicsEnvSet PLATFORM \x22'`tr '\0' '\n' </proc/device-tree/compatible|head -n1`'\x22' >>/tmp/${IOC}.iocinfo"
+system "test ! -r /proc/device-tree/model||(/bin/grep -qs '[a-zA-Z]' /proc/device-tree/model&&/bin/grep -qsv test /proc/device-tree/model&&/bin/echo -e 'epicsEnvSet PLATFORM \x22'`tr -d '\0' </proc/device-tree/model`'\x22')>>/tmp/${IOC}.iocinfo"
+# "source"
+< /tmp/${IOC}.iocinfo
+# cleanup
+system "rm /tmp/${IOC}.iocinfo"
+epicsEnvSet ST_CMD ${STARTUP}/${IOCSH_STARTUP_SCRIPT=startup.script}
+afterInit iocinfo ${IOCINFO_URL="svd-ciddock01:1516/iocinfo/"}
