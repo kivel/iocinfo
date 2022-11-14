@@ -1,191 +1,112 @@
-#include <curl/curl.h>
-#include <iocshDeclWrapper.h>
-
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <atomic>
-#include <thread>
-#include <chrono>
-#include <system_error>
-
-#include "iocinfoData.h"
 
 #include <epicsThread.h>
-#include "cantProceed.h"
+#include <iocshDeclWrapper.h>
 
-/**
- * @brief callback for response handling
- */
-static size_t response_callback(void *data, size_t size, size_t nmemb, void *userp)
-{
-  size_t realsize = size * nmemb;
-  return realsize;
+#include <atomic>
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
+
+#include "iocinfoCurl.hpp"
+#include "iocinfoData.h"
+
+class iocInfo : public epicsThreadRunable {
+ public:
+  iocInfo(int arg, const char *name);
+  virtual ~iocInfo();
+  virtual void run();
+  void setUrl(const std::string url);
+  void setUrl(const char *url);
+  void setVerbose(bool verbose);
+  // bool running; // old school
+  std::atomic<bool> running;
+  std::string url;
+  epicsThread thread;
+  bool verbose = false;
+
+ private:
+  // IocInfoData::Data *data; // use shared_ptr
+  std::shared_ptr<IocInfoData::Data> data;
+};
+
+iocInfo::iocInfo(int arg, const char *name)
+    : running(true),
+      url("localhost:1516/iocinfo/"),
+      thread(*this, name, epicsThreadGetStackSize(epicsThreadStackSmall), 50) {
+  // data = new IocInfoData::Data;
+  std::cout << "===>>> iocInfo " << std::endl;
+  data = std::make_shared<IocInfoData::Data>();
+  // std::cout << "   >>> initial post to URL: " << url << std::endl;
+  // postJson(*data->payload, url.c_str());
+  std::cout << "<<<" << std::endl;
+  // thread.start();  // << called by `iocinfo` instead for better controll
 }
 
-/**
- * @brief post payload to the server
- * @param[in] payload json payload
- * @param[in] url URL to post to
- */
-static void postJson(const nlohmann::json payload, const char *url)
-{
-  std::cout << "=======> posting data to URL: " << url << std::endl;
-  CURL *curl = nullptr;
-  CURLcode res = CURLE_OK;
+iocInfo::~iocInfo() {
+  std::cout << "iocinfo destructor" << std::endl;
+  // delete (data); // use of shared_ptr makes this obsolete
+  running = false;
+  thread.exitWait();
+}
 
-  std::string data = payload.dump();
+// TODO: move to header, inline
+void iocInfo::setUrl(const std::string URL) { url = URL; }
 
-  curl_global_init(CURL_GLOBAL_ALL);
+// TODO: move to header, inline
+void iocInfo::setUrl(const char *URL) { url = URL; }
 
-  curl = curl_easy_init();
-  if (curl)
-  {
-    /* First set the URL that is about to receive our POST. This URL can
-       just as well be an https:// URL if that is what should receive the
-       data. */
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    struct curl_slist *headers = nullptr;
-    headers = curl_slist_append(headers, "Accept: application/json");
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "charset: utf-8");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response_callback);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-    res = curl_easy_perform(curl);
-    // TODO: add error handling
-    if (res != CURLE_OK)
-    {
-      // fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-      std::cerr << "EE: curl_easy_perform() failed:" << curl_easy_strerror(res) << std::endl;
-      std::cerr << "EE: url" << url << std::endl;
-    }
-
-    /* always cleanup */
-    curl_easy_cleanup(curl);
-    delete (headers);
+void iocInfo::setVerbose(bool v) {
+  if (v) {
+    std::cout << "iocInfo verbose is set to true" << std::endl;
   }
+  verbose = v;
 }
 
-/**
- * @brief write payload to file
- * @param[in] payload json payload
- * @param[in] filename filename to write to
- */
-static void writeJson(const nlohmann::json payload, const std::string fname)
-{
-  std::ofstream file(fname);
-  file << payload.dump() << std::endl;
-}
-
-/**
- * @brief global variables
- */
-// std::unique_ptr<std::thread> postThread; // Thread periodically posting data to elasticsearch
-// epicsThreadId epicsPostThread;
-std::atomic<bool> stopPost; // Setting this flag will stop the posting of data to elasticsearch
-// IocInfoData::Data *data;
-
-typedef struct iocinfoPrivData
-{
-  const char *url;               // url to post data to elasticsearch
-  IocInfoData::Data *data;       // json data
-  epicsThreadId epicsPostThread; // thread
-
-} iocinfoPrivData;
-
-/**
- * @brief worker thread function
- * @param[in] data pointer to data structure
- * @param[in] url url to post to
- * @todo add variable for sleep_for
- */
-// void worker(IocInfoData::Data *data, std::string url)
-void worker(void *input)
-{
-  struct iocinfoPrivData *priv = (iocinfoPrivData *)(input);
-
-  std::cout << "== worker started" << std::endl;
-  postJson(*priv->data->payload, priv->url);
-  std::cerr << "url addr is " << &priv->url << std::endl;
+void iocInfo::run() {
   auto start = std::chrono::steady_clock::now();
 
-  while (!stopPost)
-  {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  while (running) {
     auto now = std::chrono::steady_clock::now();
-    // only post data every n seconds
-    if ((now - start) > std::chrono::seconds(10))
-    {
-      postJson(*priv->data->payload, priv->url);
-      std::cerr << "url addr is " << &priv->url << std::endl;
-      start = now;
+    // TODO: make delay adjustable
+    if (now - start < std::chrono::seconds(10)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      continue;
     }
+    start = now;
+    if (verbose) std::cout << "posting data to: " << url << std::endl;
+    postJson(*data->payload, url.c_str());
   }
-  // delete(priv);
 }
 
 /**
- * @brief start post thread function
- * @todo remove url and obtain from global scope, which is set through dedicated function
+ * create object
  */
-void iocinfoStart(const char *url)
-{
-  struct iocinfoPrivData *priv;
-  priv = new iocinfoPrivData;
-
-  // priv->url = "svd-ciddock01:1516/iocinfo/";
-  priv->url = url;
-  priv->data = new IocInfoData::Data;
-
-  stopPost = false;
-
-  priv->epicsPostThread = epicsThreadMustCreate("jsonPostWorker",
-                                                epicsThreadPriorityLow,
-                                                epicsThreadGetStackSize(epicsThreadStackSmall),
-                                                &worker, priv);
-}
+iocInfo et1(0, "iocInfo");
+iocInfo *et2;
 
 /**
- * @brief stop post thread function
+ * @brief iocsh function to start iocinfo
+ * @param[in] url URL to send data to
+ * @details Will start iocinfo thread and send data to url
  */
-void iocinfoStop()
-{
-  // stopPost = true;
-  // if (postThread.get())
-  // {
-  //   try
-  //   {
-  //     postThread->join();
-  //   }
-  //   catch (const std::system_error &e)
-  //   {
-  //     std::cout << "failed to join thread" << std::endl;
-  //     std::cout << e.what() << std::endl;
-  //     // Do nothing since we are destroying everything anyway.
-  //   }
-  // }
-  // delete (data);
+void iocinfo(const char *url) {
+  std::cout << "========================================" << std::endl;
+  std::cout << "starting `iocinfo`, data will be send to --> " << url
+            << std::endl;
+  // et1.setUrl(url);
+  // et1.thread.start();
+  et2 = new iocInfo(0, "i2");
+  et2->setUrl(url);
+  et2->thread.start();
 }
 
-/**
- * @brief foo
- */
-void iocinfo(const char *url)
-{
-  IocInfoData::Data *data;
-  data = new IocInfoData::Data;
+void iocInfoVerbose(int verbose) { et2->setVerbose((bool)verbose); }
 
-  // writeJson(*data->payload, "/tmp/iocinfo.json");
-  postJson(*data->payload, url);
-
-  delete (data);
-}
-
-IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar,
-                          IOCSH_FUNC_WRAP(iocinfo, "url(string)");
-                          IOCSH_FUNC_WRAP(iocinfoStart, "url(string)");
-                          IOCSH_FUNC_WRAP(iocinfoStop);
+IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar, IOCSH_FUNC_WRAP(iocinfo, "url(string)");
+                          IOCSH_FUNC_WRAP(iocInfoVerbose, "on|off (1|0) (int)");
+                          // IOCSH_FUNC_WRAP(startPostThread, "url(string)");
+                          // IOCSH_FUNC_WRAP_QUIET(stopPostThread);
                           /* more functions may be registered here */
 )

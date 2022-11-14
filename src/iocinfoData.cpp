@@ -6,11 +6,12 @@ namespace IocInfoData
 {
     Data::Data()
     {
-        std::cout << "===>>> IocInfoData <<<" << std::endl;
+        std::cout << "===>>> IocInfoData ";
         envMapToJson(bootInfo, iocEpicsEnv);
         getLoadedLibraries();
         payload = std::make_shared<nlohmann::json>(marshalPayload());
         // std::cout << marshalPayload().dump(1) << std::endl;
+        std::cout << "<<<" << std::endl;
     }
 
     Data::~Data()

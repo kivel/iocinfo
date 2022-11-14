@@ -8,13 +8,12 @@ endif
 
 MODULE=iocinfo
 
-#To avoid clash with SynApps module don't use in EPICS 3
 EXCLUDE_VERSIONS=3
 BUILDCLASSES=Linux
 
 # useful for looping over maps and make_unique
 # USR_CXXFLAGS+=-std=c++17
-USR_CXXFLAGS+=-std=c++11 -g
+USR_CXXFLAGS+=-std=c++11
 USR_LDFLAGS+=-lcurl
 
 SOURCES += src/iocinfo.cpp
