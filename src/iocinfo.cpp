@@ -32,17 +32,22 @@ void iocInfo::setVerbose(bool v) {
 
 void iocInfo::run() {
   auto start = std::chrono::steady_clock::now();
+  bool postData = true;
 
   while (running) {
+    if (postData) {
+      if (verbose) std::cout << "posting data to: " << url << std::endl;
+      postJson(*data->payload, url.c_str());
+      postData = false;
+    }
     auto now = std::chrono::steady_clock::now();
     // TODO: make delay adjustable
     if (now - start < std::chrono::seconds(10)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      continue;
+    } else {
+      start = now;
+      postData = true;
     }
-    start = now;
-    if (verbose) std::cout << "posting data to: " << url << std::endl;
-    postJson(*data->payload, url.c_str());
   }
 }
 
