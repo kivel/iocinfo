@@ -1,61 +1,27 @@
-
-#include <epicsThread.h>
-#include <iocshDeclWrapper.h>
-
-#include <atomic>
 #include <chrono>
 #include <iostream>
-#include <memory>
-#include <string>
 #include <thread>
 
+// dependency
+#include <iocshDeclWrapper.h>
+
+// this module
+#include "iocinfo.hpp"
 #include "iocinfoCurl.hpp"
-#include "iocinfoData.h"
-
-class iocInfo : public epicsThreadRunable {
- public:
-  iocInfo(int arg, const char *name);
-  virtual ~iocInfo();
-  virtual void run();
-  void setUrl(const std::string url);
-  void setUrl(const char *url);
-  void setVerbose(bool verbose);
-  // bool running; // old school
-  std::atomic<bool> running;
-  std::string url;
-  epicsThread thread;
-  bool verbose = false;
-
- private:
-  // IocInfoData::Data *data; // use shared_ptr
-  std::shared_ptr<IocInfoData::Data> data;
-};
 
 iocInfo::iocInfo(int arg, const char *name)
     : running(true),
       url("localhost:1516/iocinfo/"),
       thread(*this, name, epicsThreadGetStackSize(epicsThreadStackSmall), 50) {
-  // data = new IocInfoData::Data;
-  std::cout << "===>>> iocInfo " << std::endl;
+  std::cout << "===>>> iocInfo construtor" << std::endl;
   data = std::make_shared<IocInfoData::Data>();
-  // std::cout << "   >>> initial post to URL: " << url << std::endl;
-  // postJson(*data->payload, url.c_str());
-  std::cout << "<<<" << std::endl;
-  // thread.start();  // << called by `iocinfo` instead for better controll
 }
 
 iocInfo::~iocInfo() {
-  std::cout << "iocinfo destructor" << std::endl;
-  // delete (data); // use of shared_ptr makes this obsolete
+  std::cout << "<<<=== iocInfo destructor" << std::endl;
   running = false;
   thread.exitWait();
 }
-
-// TODO: move to header, inline
-void iocInfo::setUrl(const std::string URL) { url = URL; }
-
-// TODO: move to header, inline
-void iocInfo::setUrl(const char *URL) { url = URL; }
 
 void iocInfo::setVerbose(bool v) {
   if (v) {
@@ -99,7 +65,10 @@ void iocinfo(const char *url) {
   et2->thread.start();
 }
 
-// TODO: move to header, inline
+/**
+ * @brief iocsh function to enable/disable verbose output
+ * @param[in] verbose 0: off, 1: on
+ */
 void iocInfoVerbose(int verbose) { et2->setVerbose((bool)verbose); }
 
 IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar, IOCSH_FUNC_WRAP(iocinfo, "url(string)");
