@@ -83,7 +83,6 @@ void iocInfo::run() {
 /**
  * create object
  */
-iocInfo et1(0, "iocInfo");
 iocInfo *et2;
 
 /**
@@ -95,13 +94,12 @@ void iocinfo(const char *url) {
   std::cout << "========================================" << std::endl;
   std::cout << "starting `iocinfo`, data will be send to --> " << url
             << std::endl;
-  // et1.setUrl(url);
-  // et1.thread.start();
-  et2 = new iocInfo(0, "i2");
+  et2 = new iocInfo(0, "iocInfo");
   et2->setUrl(url);
   et2->thread.start();
 }
 
+// TODO: move to header, inline
 void iocInfoVerbose(int verbose) { et2->setVerbose((bool)verbose); }
 
 IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar, IOCSH_FUNC_WRAP(iocinfo, "url(string)");

@@ -8,7 +8,9 @@ endif
 
 MODULE=iocinfo
 
-EXCLUDE_VERSIONS=3
+DBDS += dbd/iocinfo.dbd
+
+# EXCLUDE_VERSIONS=3
 BUILDCLASSES=Linux
 
 # useful for looping over maps and make_unique
@@ -18,5 +20,6 @@ USR_LDFLAGS+=-lcurl
 
 SOURCES += src/iocinfo.cpp
 SOURCES += src/iocinfoData.cpp
+SOURCES += src/iocinfoCurl.cpp
 
 DBDS += dbd/iocinfo.dbd
