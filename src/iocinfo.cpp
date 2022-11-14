@@ -41,7 +41,6 @@ void iocInfo::run() {
       postData = false;
     }
     auto now = std::chrono::steady_clock::now();
-    // TODO: make delay adjustable
     if (now - start < std::chrono::seconds(postDelay)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } else {
@@ -67,24 +66,35 @@ void iocinfo(const char *url) {
             << std::endl;
   et2 = new iocInfo(0, "iocInfo");
   et2->setUrl(url);
-  et2->thread.start();
+}
+
+/**
+ * @brief iocsh function to start iocinfo
+ */
+// TODO: add error handling
+void iocinfoStart() {
+  if (et2) {
+    et2->thread.start();
+  }
 }
 
 /**
  * @brief iocsh function to enable/disable verbose output
  * @param[in] verbose 0: off, 1: on
  */
-void iocInfoVerbose(int verbose) { et2->setVerbose((bool)verbose); }
+void iocinfoVerbose(int verbose) { et2->setVerbose((bool)verbose); }
 
 /**
  * @brief set post delay
  * @param[in] postDelay post delay in seconds
  */
-void iocInfoPostDelay(int postDelay) {et2->setPostDelay((size_t)postDelay); }
+void iocinfoPostDelay(int postDelay) { et2->setPostDelay((size_t)postDelay); }
 
 IOCSH_FUNC_WRAP_REGISTRAR(myRegistrar, IOCSH_FUNC_WRAP(iocinfo, "url(string)");
-                          IOCSH_FUNC_WRAP(iocInfoVerbose, "on|off (1|0) (int)");
-                          IOCSH_FUNC_WRAP(iocInfoPostDelay, "postDelay in seconds (int)");
+                          IOCSH_FUNC_WRAP(iocinfoVerbose, "on|off (1|0) (int)");
+                          IOCSH_FUNC_WRAP(iocinfoPostDelay,
+                                          "postDelay in seconds (int)");
+                          IOCSH_FUNC_WRAP(iocinfoStart, "start iocinfo thread");
                           // IOCSH_FUNC_WRAP(startPostThread, "url(string)");
                           // IOCSH_FUNC_WRAP_QUIET(stopPostThread);
                           /* more functions may be registered here */
