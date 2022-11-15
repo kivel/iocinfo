@@ -21,13 +21,13 @@ class iocInfo : public epicsThreadRunable {
 
   void setVerbose(bool verbose);
   // bool running; // old school
+  std::shared_ptr<IocInfoData::Data> data;
   std::atomic<bool> running;
   std::string url;
   epicsThread thread;
   bool verbose = false;
 
  private:
-  std::shared_ptr<IocInfoData::Data> data;
   size_t postDelay = 60;
 };
 

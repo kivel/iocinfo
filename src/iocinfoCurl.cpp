@@ -1,4 +1,5 @@
 #include "iocinfoCurl.hpp"
+#include <iostream>
 
 void postJson(const nlohmann::json j, const std::string url)
 {
@@ -25,10 +26,10 @@ void postJson(const nlohmann::json j, const std::string url)
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
     res = curl_easy_perform(curl);
     // TODO: add error handling
-    // if (res != CURLE_OK)
-    // {
-    //   std::cout << res << std::endl;
-    // }
+    if (res != CURLE_OK)
+    {
+      std::cout << res << std::endl;
+    }
     curl_slist_free_all(headers); /* free the list */
   }
 }

@@ -74,6 +74,8 @@ void iocinfo(const char *url) {
 // TODO: add error handling
 void iocinfoStart() {
   if (et2) {
+    et2->data->getLoadedLibraries();
+    et2->data->updatePayload();
     et2->thread.start();
   }
 }
