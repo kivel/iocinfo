@@ -17,7 +17,7 @@ The `iocinfo` module is designed to send data about the host and the libraries l
 
 === elasticsearch
 So far only a proof of concept is available.
-It can be accesed via link:svd-ciddock01.clsi.ca:5901[kibana].
+It can be accesed via link:svd-ciddock01.clsi.ca:5601[kibana]. (svd-ciddock01.clsi.ca:5601)
 
 == using the module with `require`
 
