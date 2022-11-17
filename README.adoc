@@ -1,0 +1,31 @@
+:imagesdir: doc/images
+:toc:
+:project_id: iocinfo
+:icons: font
+:source-highlighter: prettify
+:tags: driver,module,vme
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+
+= iocinfo
+
+== About
+The `iocinfo` module is designed to send data about the host and the libraries loaded by the `require` module to elasticsearch.
+
+=== elasticsearch
+So far only a proof of concept is available.
+It can be accesed via link:svd-ciddock01.clsi.ca:5901[kibana].
+
+== using the module with `require`
+
+.startup.script examples
+[source,bash]
+----
+require iocinfo
+----
+
+However, the script is automatically loaded by `clsStartup`.
+
