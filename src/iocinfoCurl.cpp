@@ -36,12 +36,3 @@ void postJson(const nlohmann::json j, const std::string url)
     curl_easy_cleanup(curl);      /* cleanup, adresses the file descriptor bug */
   }
 }
-
-// /**
-//  * @brief callback for response handling
-//  */
-// static size_t response_callback(void *data, size_t size, size_t nmemb, void *userp)
-// {
-//   size_t realsize = size * nmemb;
-//   return realsize;
-// }
