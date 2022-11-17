@@ -1,7 +1,5 @@
 #include "iocinfoCurl.hpp"
 
-#include <iostream>
-
 void postJson(const nlohmann::json j, const std::string url)
 {
   CURL *curl = nullptr;
@@ -38,11 +36,11 @@ void postJson(const nlohmann::json j, const std::string url)
   }
 }
 
-/**
- * @brief callback for response handling
- */
-static size_t response_callback(void *data, size_t size, size_t nmemb, void *userp)
-{
-  size_t realsize = size * nmemb;
-  return realsize;
-}
+// /**
+//  * @brief callback for response handling
+//  */
+// static size_t response_callback(void *data, size_t size, size_t nmemb, void *userp)
+// {
+//   size_t realsize = size * nmemb;
+//   return realsize;
+// }

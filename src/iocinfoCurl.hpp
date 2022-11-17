@@ -5,7 +5,20 @@
 #include <curl/curl.h>
 #include "nlohmann/json.hpp"
 
+/**
+ * @brief post json data to server
+ * @param[in] j json data
+ * @param[in] url the URL to post the data
+ */
 void postJson(const nlohmann::json j, const std::string url);
-static size_t response_callback(void *data, size_t size, size_t nmemb, void *userp);
+
+/**
+ * @brief callback for response handling
+ */
+static inline size_t response_callback(void *data, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  return realsize;
+}
 
 #endif // __IOCINFO_CURL_HPP
