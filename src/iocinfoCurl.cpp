@@ -23,6 +23,7 @@ void postJson(const nlohmann::json j, const std::string url)
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response_callback);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L); /* complete within 20 seconds */
     res = curl_easy_perform(curl);
     // TODO: add error handling
     if (res != CURLE_OK)
@@ -32,7 +33,7 @@ void postJson(const nlohmann::json j, const std::string url)
               curl_easy_strerror(res));
     }
     curl_slist_free_all(headers); /* free the list */
-    curl_easy_cleanup(curl); /* cleanup, adresses the file descriptor bug */
+    curl_easy_cleanup(curl);      /* cleanup, adresses the file descriptor bug */
   }
 }
 
