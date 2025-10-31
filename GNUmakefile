@@ -10,13 +10,14 @@ MODULE=iocinfo
 
 DBDS += dbd/iocinfo.dbd
 
-# EXCLUDE_VERSIONS=3
 BUILDCLASSES=Linux
 
+LIB_SYS_LIBS_Linux += curl
+
 # useful for looping over maps and make_unique
-# USR_CXXFLAGS+=-std=c++17
-USR_CXXFLAGS+=-std=c++11
-USR_LDFLAGS+=-lcurl
+USR_CXXFLAGS+=-std=c++17
+# USR_CXXFLAGS+=-std=c++11
+# USR_LDFLAGS+=-lcurl
 
 SOURCES += src/iocinfo.cpp
 SOURCES += src/iocinfoData.cpp

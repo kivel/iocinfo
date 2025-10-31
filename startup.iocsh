@@ -15,6 +15,8 @@ system "test ! -r /proc/device-tree/model||(/bin/grep -qs '[a-zA-Z]' /proc/devic
 system "rm /tmp/${IOC}.iocinfo"
 epicsEnvSet ST_CMD ${STARTUP}/${IOCSH_STARTUP_SCRIPT=startup.script}
 # create iocinfo instance
-iocinfo ${IOCINFO_URL="svd-ciddock01:1516/iocinfo/"}
+# iocinfo ${IOCINFO_URL="<your_log_server_here>:1516/iocinfo/"}
+iocinfo ${IOCINFO_URL="localhost:8080"}
+
 # start posting data after init
 afterInit iocinfoStart
